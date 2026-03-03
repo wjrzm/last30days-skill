@@ -203,6 +203,7 @@ def get_config() -> Dict[str, Any]:
         ('OPENAI_MODEL_PIN', None),
         ('XAI_MODEL_POLICY', 'latest'),
         ('XAI_MODEL_PIN', None),
+        ('APIFY_API_TOKEN', None),
         ('AUTH_TOKEN', None),
         ('CT0', None),
     ]
@@ -404,6 +405,15 @@ def is_polymarket_available() -> bool:
     Always returns True - Gamma API is free, no key needed.
     """
     return True
+
+
+def is_apify_available(config: Dict[str, Any]) -> bool:
+    """Check if Apify token is configured for TikTok/social scraping.
+
+    Returns True if APIFY_API_TOKEN is set. One token covers
+    TikTok, Facebook, Instagram (all Apify-backed sources).
+    """
+    return bool(config.get('APIFY_API_TOKEN'))
 
 
 def get_x_source_status(config: Dict[str, Any]) -> Dict[str, Any]:

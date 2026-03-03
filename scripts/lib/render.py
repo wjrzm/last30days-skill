@@ -24,6 +24,8 @@ def _xref_tag(item) -> str:
             source_names.add('X')
         elif ref_id.startswith('YT'):
             source_names.add('YouTube')
+        elif ref_id.startswith('TK'):
+            source_names.add('TikTok')
         elif ref_id.startswith('HN'):
             source_names.add('HN')
         elif ref_id.startswith('PM'):
@@ -57,8 +59,10 @@ def _assess_data_freshness(report: schema.Report) -> dict:
     hn_recent = sum(1 for h in report.hackernews if h.date and h.date >= report.range_from)
     pm_recent = sum(1 for p in report.polymarket if p.date and p.date >= report.range_from)
 
-    total_recent = reddit_recent + x_recent + web_recent + hn_recent + pm_recent
-    total_items = len(report.reddit) + len(report.x) + len(report.web) + len(report.hackernews) + len(report.polymarket)
+    tiktok_recent = sum(1 for t in report.tiktok if t.date and t.date >= report.range_from)
+
+    total_recent = reddit_recent + x_recent + web_recent + hn_recent + pm_recent + tiktok_recent
+    total_items = len(report.reddit) + len(report.x) + len(report.web) + len(report.hackernews) + len(report.polymarket) + len(report.tiktok)
 
     return {
         "reddit_recent": reddit_recent,
@@ -244,6 +248,42 @@ def render_compact(report: schema.Report, limit: int = 15, missing_keys: str = "
             lines.append(f"  *{item.why_relevant}*")
             lines.append("")
 
+    # TikTok items
+    if report.tiktok_error:
+        lines.append("### TikTok Videos")
+        lines.append("")
+        lines.append(f"**ERROR:** {report.tiktok_error}")
+        lines.append("")
+    elif report.tiktok:
+        lines.append("### TikTok Videos")
+        lines.append("")
+        for item in report.tiktok[:limit]:
+            eng_str = ""
+            if item.engagement:
+                eng = item.engagement
+                parts = []
+                if eng.views is not None:
+                    parts.append(f"{eng.views:,} views")
+                if eng.likes is not None:
+                    parts.append(f"{eng.likes:,} likes")
+                if parts:
+                    eng_str = f" [{', '.join(parts)}]"
+
+            date_str = f" ({item.date})" if item.date else ""
+
+            lines.append(f"**{item.id}** (score:{item.score}) @{item.author_name}{date_str}{eng_str}{_xref_tag(item)}")
+            lines.append(f"  {item.text[:200]}")
+            lines.append(f"  {item.url}")
+            if item.caption_snippet and item.caption_snippet != item.text[:len(item.caption_snippet)]:
+                snippet = item.caption_snippet[:200]
+                if len(item.caption_snippet) > 200:
+                    snippet += "..."
+                lines.append(f"  Caption: {snippet}")
+            if item.hashtags:
+                lines.append(f"  Tags: {' '.join('#' + h for h in item.hashtags[:8])}")
+            lines.append(f"  *{item.why_relevant}*")
+            lines.append("")
+
     # Hacker News items
     if report.hackernews_error:
         lines.append("### Hacker News Stories")
@@ -407,6 +447,14 @@ def render_source_status(report: schema.Report, source_info: dict = None) -> str
         lines.append(f"  ✅ YouTube: {len(report.youtube)} videos ({with_transcripts} with transcripts)")
     # Hide when zero results (no skip reason line needed)
 
+    # TikTok
+    if report.tiktok_error:
+        lines.append(f"  ❌ TikTok: error — {report.tiktok_error}")
+    elif report.tiktok:
+        with_captions = sum(1 for v in report.tiktok if getattr(v, 'caption_snippet', None))
+        lines.append(f"  ✅ TikTok: {len(report.tiktok)} videos ({with_captions} with captions)")
+    # Hide when zero results
+
     # Hacker News
     if report.hackernews_error:
         lines.append(f"  ❌ HN: error - {report.hackernews_error}")
@@ -458,6 +506,8 @@ def render_context_snippet(report: schema.Report) -> str:
         all_items.append((item.score, "Reddit", item.title, item.url))
     for item in report.x[:5]:
         all_items.append((item.score, "X", item.text[:50] + "...", item.url))
+    for item in report.tiktok[:5]:
+        all_items.append((item.score, "TikTok", item.text[:50] + "...", item.url))
     for item in report.hackernews[:5]:
         all_items.append((item.score, "HN", item.title[:50] + "...", item.hn_url))
     for item in report.polymarket[:5]:
@@ -549,6 +599,29 @@ def render_full_report(report: schema.Report) -> str:
 
             lines.append("")
             lines.append(f"> {item.text}")
+            lines.append("")
+
+    # TikTok section
+    if report.tiktok:
+        lines.append("## TikTok Videos")
+        lines.append("")
+        for item in report.tiktok:
+            lines.append(f"### {item.id}: @{item.author_name}")
+            lines.append("")
+            lines.append(f"- **URL:** {item.url}")
+            lines.append(f"- **Date:** {item.date or 'Unknown'}")
+            lines.append(f"- **Score:** {item.score}/100")
+            lines.append(f"- **Relevance:** {item.why_relevant}")
+
+            if item.engagement:
+                eng = item.engagement
+                lines.append(f"- **Engagement:** {eng.views or '?'} views, {eng.likes or '?'} likes, {eng.num_comments or '?'} comments")
+
+            if item.hashtags:
+                lines.append(f"- **Hashtags:** {' '.join('#' + h for h in item.hashtags[:10])}")
+
+            lines.append("")
+            lines.append(f"> {item.text[:300]}")
             lines.append("")
 
     # HN section

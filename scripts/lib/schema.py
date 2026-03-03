@@ -22,6 +22,9 @@ class Engagement:
     # YouTube fields
     views: Optional[int] = None
 
+    # TikTok / Facebook fields
+    shares: Optional[int] = None
+
     # Polymarket fields
     volume: Optional[float] = None
     liquidity: Optional[float] = None
@@ -44,6 +47,8 @@ class Engagement:
             d['quotes'] = self.quotes
         if self.views is not None:
             d['views'] = self.views
+        if self.shares is not None:
+            d['shares'] = self.shares
         if self.volume is not None:
             d['volume'] = self.volume
         if self.liquidity is not None:
@@ -232,6 +237,45 @@ class YouTubeItem:
 
 
 @dataclass
+class TikTokItem:
+    """Normalized TikTok item."""
+    id: str                    # video_id
+    text: str                  # caption/description
+    url: str                   # webVideoUrl
+    author_name: str           # authorMeta.name
+    date: Optional[str] = None
+    date_confidence: str = "high"  # Apify provides exact timestamps
+    engagement: Optional[Engagement] = None  # views, likes, num_comments, shares
+    caption_snippet: str = ""  # spoken-word caption (if available), else text
+    hashtags: List[str] = field(default_factory=list)
+    relevance: float = 0.7
+    why_relevant: str = ""
+    subs: SubScores = field(default_factory=SubScores)
+    score: int = 0
+    cross_refs: List[str] = field(default_factory=list)
+
+    def to_dict(self) -> Dict[str, Any]:
+        d = {
+            'id': self.id,
+            'text': self.text,
+            'url': self.url,
+            'author_name': self.author_name,
+            'date': self.date,
+            'date_confidence': self.date_confidence,
+            'engagement': self.engagement.to_dict() if self.engagement else None,
+            'caption_snippet': self.caption_snippet,
+            'hashtags': self.hashtags,
+            'relevance': self.relevance,
+            'why_relevant': self.why_relevant,
+            'subs': self.subs.to_dict(),
+            'score': self.score,
+        }
+        if self.cross_refs:
+            d['cross_refs'] = self.cross_refs
+        return d
+
+
+@dataclass
 class HackerNewsItem:
     """Normalized Hacker News item."""
     id: str           # "HN1", "HN2", ...
@@ -329,6 +373,7 @@ class Report:
     x: List[XItem] = field(default_factory=list)
     web: List[WebSearchItem] = field(default_factory=list)
     youtube: List[YouTubeItem] = field(default_factory=list)
+    tiktok: List[TikTokItem] = field(default_factory=list)
     hackernews: List[HackerNewsItem] = field(default_factory=list)
     polymarket: List[PolymarketItem] = field(default_factory=list)
     best_practices: List[str] = field(default_factory=list)
@@ -339,6 +384,7 @@ class Report:
     x_error: Optional[str] = None
     web_error: Optional[str] = None
     youtube_error: Optional[str] = None
+    tiktok_error: Optional[str] = None
     hackernews_error: Optional[str] = None
     polymarket_error: Optional[str] = None
     # Handle resolution
@@ -362,6 +408,7 @@ class Report:
             'x': [x.to_dict() for x in self.x],
             'web': [w.to_dict() for w in self.web],
             'youtube': [y.to_dict() for y in self.youtube],
+            'tiktok': [t.to_dict() for t in self.tiktok],
             'hackernews': [h.to_dict() for h in self.hackernews],
             'polymarket': [p.to_dict() for p in self.polymarket],
             'best_practices': self.best_practices,
@@ -378,6 +425,8 @@ class Report:
             d['web_error'] = self.web_error
         if self.youtube_error:
             d['youtube_error'] = self.youtube_error
+        if self.tiktok_error:
+            d['tiktok_error'] = self.tiktok_error
         if self.hackernews_error:
             d['hackernews_error'] = self.hackernews_error
         if self.polymarket_error:
@@ -485,6 +534,30 @@ class Report:
                 cross_refs=y.get('cross_refs', []),
             ))
 
+        # Reconstruct TikTok items
+        tiktok_items = []
+        for t in data.get('tiktok', []):
+            eng = None
+            if t.get('engagement'):
+                eng = Engagement(**t['engagement'])
+            subs = SubScores(**t.get('subs', {})) if t.get('subs') else SubScores()
+            tiktok_items.append(TikTokItem(
+                id=t['id'],
+                text=t.get('text', ''),
+                url=t['url'],
+                author_name=t.get('author_name', ''),
+                date=t.get('date'),
+                date_confidence=t.get('date_confidence', 'high'),
+                engagement=eng,
+                caption_snippet=t.get('caption_snippet', ''),
+                hashtags=t.get('hashtags', []),
+                relevance=t.get('relevance', 0.7),
+                why_relevant=t.get('why_relevant', ''),
+                subs=subs,
+                score=t.get('score', 0),
+                cross_refs=t.get('cross_refs', []),
+            ))
+
         # Reconstruct HackerNews items
         hn_items = []
         for h in data.get('hackernews', []):
@@ -549,6 +622,7 @@ class Report:
             x=x_items,
             web=web_items,
             youtube=youtube_items,
+            tiktok=tiktok_items,
             hackernews=hn_items,
             polymarket=pm_items,
             best_practices=data.get('best_practices', []),
@@ -558,6 +632,7 @@ class Report:
             x_error=data.get('x_error'),
             web_error=data.get('web_error'),
             youtube_error=data.get('youtube_error'),
+            tiktok_error=data.get('tiktok_error'),
             hackernews_error=data.get('hackernews_error'),
             polymarket_error=data.get('polymarket_error'),
             resolved_x_handle=data.get('resolved_x_handle'),

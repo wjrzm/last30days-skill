@@ -1,7 +1,7 @@
 ---
 name: last30days
-version: "2.6"
-description: "Research a topic from the last 30 days. Also triggered by 'last30'. Sources: Reddit, X, YouTube, Hacker News, Polymarket, web. Become an expert and write copy-paste-ready prompts."
+version: "2.7"
+description: "Research a topic from the last 30 days. Also triggered by 'last30'. Sources: Reddit, X, YouTube, TikTok, Hacker News, Polymarket, web. Become an expert and write copy-paste-ready prompts."
 argument-hint: 'last30 AI video tools, last30 best project management tools'
 allowed-tools: Bash, Read, Write, AskUserQuestion, WebSearch
 homepage: https://github.com/mvanhorn/last30days-skill
@@ -24,14 +24,15 @@ metadata:
       - reddit
       - x
       - youtube
+      - tiktok
       - hackernews
       - trends
       - prompts
 ---
 
-# last30days v2.5: Research Any Topic from the Last 30 Days
+# last30days v2.7: Research Any Topic from the Last 30 Days
 
-Research ANY topic across Reddit, X, YouTube, Hacker News, Polymarket, and the web. Surface what people are actually discussing, recommending, betting on, and debating right now.
+Research ANY topic across Reddit, X, YouTube, TikTok, Hacker News, Polymarket, and the web. Surface what people are actually discussing, recommending, betting on, and debating right now.
 
 ## CRITICAL: Parse User Intent
 
@@ -64,7 +65,7 @@ Common patterns:
 **DISPLAY your parsing to the user.** Before running any tools, output:
 
 ```
-I'll research {TOPIC} across Reddit, X, and the web to find what's been discussed in the last 30 days.
+I'll research {TOPIC} across Reddit, X, TikTok, and the web to find what's been discussed in the last 30 days.
 
 Parsed intent:
 - TOPIC = {TOPIC}
@@ -126,7 +127,7 @@ Agent mode report format:
 
 ```
 ## Research Report: {TOPIC}
-Generated: {date} | Sources: Reddit, X, YouTube, HN, Polymarket, Web
+Generated: {date} | Sources: Reddit, X, YouTube, TikTok, HN, Polymarket, Web
 
 ### Key Findings
 [3-5 bullet points, highest-signal insights with citations]
@@ -171,12 +172,14 @@ Use a **timeout of 300000** (5 minutes) on the Bash call. The script typically t
 
 The script will automatically:
 - Detect available API keys
-- Run Reddit/X/YouTube/Hacker News/Polymarket searches
-- Output ALL results including YouTube transcripts, HN comments, and prediction market odds
+- Run Reddit/X/YouTube/TikTok/Hacker News/Polymarket searches
+- Output ALL results including YouTube transcripts, TikTok captions, HN comments, and prediction market odds
 
-**Read the ENTIRE output.** It contains SIX data sections in this order: Reddit items, X items, YouTube items, Hacker News items, Polymarket items, and WebSearch items. If you miss sections, you will produce incomplete stats.
+**Read the ENTIRE output.** It contains SEVEN data sections in this order: Reddit items, X items, YouTube items, TikTok items, Hacker News items, Polymarket items, and WebSearch items. If you miss sections, you will produce incomplete stats.
 
 **YouTube items in the output look like:** `**{video_id}** (score:N) {channel_name} [N views, N likes]` followed by a title, URL, and optional transcript snippet. Count them and include them in your synthesis and stats block.
+
+**TikTok items in the output look like:** `**{TK_id}** (score:N) @{creator} [N views, N likes]` followed by a caption, URL, hashtags, and optional caption snippet. Count them and include them in your synthesis and stats block.
 
 ---
 
@@ -232,7 +235,8 @@ For ALL query types:
 The Judge Agent must:
 1. Weight Reddit/X sources HIGHER (they have engagement signals: upvotes, likes)
 2. Weight YouTube sources HIGH (they have views, likes, and transcript content)
-3. Weight WebSearch sources LOWER (no engagement data)
+3. Weight TikTok sources HIGH (they have views, likes, and caption content — viral signal)
+4. Weight WebSearch sources LOWER (no engagement data)
 4. Identify patterns that appear across ALL sources (strongest signals)
 5. Note any contradictions between sources
 6. Extract the top 3-5 actionable insights
@@ -341,9 +345,10 @@ CITATION PRIORITY (most to least preferred):
 1. @handles from X — "per @handle" (these prove the tool's unique value)
 2. r/subreddits from Reddit — "per r/subreddit"
 3. YouTube channels — "per [channel name] on YouTube" (transcript-backed insights)
-4. HN discussions — "per HN" or "per hn/username" (developer community signal)
-5. Polymarket — "Polymarket has X at Y% (up/down Z%)" with specific odds and movement
-6. Web sources — ONLY when Reddit/X/YouTube/HN/Polymarket don't cover that specific fact
+4. TikTok creators — "per @creator on TikTok" (viral/trending signal)
+5. HN discussions — "per HN" or "per hn/username" (developer community signal)
+6. Polymarket — "Polymarket has X at Y% (up/down Z%)" with specific odds and movement
+7. Web sources — ONLY when Reddit/X/YouTube/TikTok/HN/Polymarket don't cover that specific fact
 
 The tool's value is surfacing what PEOPLE are saying, not what journalists wrote.
 When both a web article and an X post cover the same fact, cite the X post.
@@ -393,6 +398,7 @@ KEY PATTERNS from the research:
 ├─ 🟠 Reddit: {N} threads │ {N} upvotes │ {N} comments
 ├─ 🔵 X: {N} posts │ {N} likes │ {N} reposts
 ├─ 🔴 YouTube: {N} videos │ {N} views │ {N} with transcripts
+├─ 🎵 TikTok: {N} videos │ {N} views │ {N} likes │ {N} with captions
 ├─ 🟡 HN: {N} stories │ {N} points │ {N} comments
 ├─ 📊 Polymarket: {N} markets │ {short summary of up to 5 most relevant market odds, e.g. "Championship: 12%, #1 Seed: 28%, Big 12: 64%, vs Kansas: 71%"}
 ├─ 🌐 Web: {N} pages — Source Name, Source Name, Source Name
@@ -564,7 +570,7 @@ After delivering a prompt, end with:
 ```
 ---
 📚 Expert in: {TOPIC} for {TARGET_TOOL}
-📊 Based on: {n} Reddit threads ({sum} upvotes) + {n} X posts ({sum} likes) + {n} YouTube videos ({sum} views) + {n} HN stories ({sum} points) + {n} web pages
+📊 Based on: {n} Reddit threads ({sum} upvotes) + {n} X posts ({sum} likes) + {n} YouTube videos ({sum} views) + {n} TikTok videos ({sum} views) + {n} HN stories ({sum} points) + {n} web pages
 
 Want another prompt? Just tell me what you're creating next.
 ```
@@ -579,6 +585,7 @@ Want another prompt? Just tell me what you're creating next.
 - Sends search queries to Algolia HN Search API (`hn.algolia.com`) for Hacker News story and comment discovery (free, no auth)
 - Sends search queries to Polymarket Gamma API (`gamma-api.polymarket.com`) for prediction market discovery (free, no auth)
 - Runs `yt-dlp` locally for YouTube search and transcript extraction (no API key, public data)
+- Sends search queries to Apify API (`api.apify.com`) for TikTok search and caption extraction (requires APIFY_API_TOKEN, free tier: $5/month credits)
 - Optionally sends search queries to Brave Search API, Parallel AI API, or OpenRouter API for web search
 - Fetches public Reddit thread data from `reddit.com` for engagement metrics
 - Stores research findings in local SQLite database (watchlist mode only)
@@ -590,6 +597,7 @@ Want another prompt? Just tell me what you're creating next.
 - Does not log, cache, or write API keys to output files
 - Does not send data to any endpoint not listed above
 - Hacker News and Polymarket sources are always available (no API key, no binary dependency)
+- TikTok source requires APIFY_API_TOKEN (sign up at apify.com for free $5/month credits, no CC)
 - Can be invoked autonomously by agents via the Skill tool (runs inline, not forked); pass `--agent` for non-interactive report output
 
 **Bundled scripts:** `scripts/last30days.py` (main research engine), `scripts/lib/` (search, enrichment, rendering modules), `scripts/lib/vendor/bird-search/` (vendored X search client, MIT licensed)
