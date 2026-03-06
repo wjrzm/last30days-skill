@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.9.3] - 2026-03-06
+
+### Fixed
+
+- **Critical:** Switch save from `run_in_background` to foreground Bash - background callbacks caused model to re-engage, hallucinate fake user messages, and generate unsolicited multi-paragraph responses
+- Save uses foreground `cat >` heredoc (executes sub-second, no callback, no delayed notification)
+
 ## [2.9.2] - 2026-03-06
 
 ### Fixed
