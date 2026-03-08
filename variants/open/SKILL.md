@@ -27,6 +27,9 @@ Parse the user's first argument to determine the mode:
 for dir in \
   "." \
   "${CLAUDE_PLUGIN_ROOT:-}" \
+  "${GEMINI_EXTENSION_DIR:-}" \
+  "$HOME/.gemini/extensions/last30days-skill" \
+  "$HOME/.gemini/extensions/last30days" \
   "$HOME/.claude/skills/last30days" \
   "$HOME/.agents/skills/last30days" \
   "$HOME/.codex/skills/last30days"; do

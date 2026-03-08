@@ -1,7 +1,7 @@
 ---
 title: "fix: Remove re-introduced Save Research to Documents section from SKILL.md"
 type: fix
-status: active
+status: completed
 date: 2026-03-08
 ---
 

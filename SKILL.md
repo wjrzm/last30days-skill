@@ -172,6 +172,9 @@ Generated: {date} | Sources: Reddit, X, YouTube, TikTok, HN, Polymarket, Web
 for dir in \
   "." \
   "${CLAUDE_PLUGIN_ROOT:-}" \
+  "${GEMINI_EXTENSION_DIR:-}" \
+  "$HOME/.gemini/extensions/last30days-skill" \
+  "$HOME/.gemini/extensions/last30days" \
   "$HOME/.claude/skills/last30days" \
   "$HOME/.agents/skills/last30days" \
   "$HOME/.codex/skills/last30days"; do
