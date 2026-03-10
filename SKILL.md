@@ -173,6 +173,7 @@ for dir in \
   "." \
   "${CLAUDE_PLUGIN_ROOT:-}" \
   "${GEMINI_EXTENSION_DIR:-}" \
+  "$HOME/.claude/plugins/marketplaces/last30days-skill" \
   "$HOME/.gemini/extensions/last30days-skill" \
   "$HOME/.gemini/extensions/last30days" \
   "$HOME/.claude/skills/last30days" \
@@ -186,7 +187,7 @@ if [ -z "${SKILL_ROOT:-}" ]; then
   exit 1
 fi
 
-python3 "${SKILL_ROOT}/scripts/last30days.py" "$ARGUMENTS" --emit=compact --no-native-web --save-dir=~/Documents/Last30Days  # Add --x-handle=HANDLE if RESOLVED_HANDLE is set
+python3 "${SKILL_ROOT}/scripts/last30days.py" $ARGUMENTS --emit=compact --no-native-web --save-dir=~/Documents/Last30Days  # Add --x-handle=HANDLE if RESOLVED_HANDLE is set
 ```
 
 Use a **timeout of 300000** (5 minutes) on the Bash call. The script typically takes 1-3 minutes.
