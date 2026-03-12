@@ -632,8 +632,10 @@ def _search_web(
                 topic, from_date, to_date, config["PARALLEL_API_KEY"], depth=depth,
             )
         elif backend == "brave":
+            use_llm_ctx = os.environ.get("BRAVE_LLM_CONTEXT", "").strip() == "1"
             raw_results = brave_search.search_web(
-                topic, from_date, to_date, config["BRAVE_API_KEY"], depth=depth,
+                topic, from_date, to_date, config["BRAVE_API_KEY"],
+                depth=depth, use_llm_context=use_llm_ctx,
             )
         elif backend == "openrouter":
             raw_results = openrouter_search.search_web(
