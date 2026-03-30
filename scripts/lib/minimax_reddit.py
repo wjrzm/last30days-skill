@@ -32,7 +32,7 @@ def _log_info(msg: str):
 MINIMAX_CHAT_URL = "https://api.minimax.chat/v1/chat/completions"
 
 # Fallback models in priority order
-MINIMAX_MODEL_FALLBACK = ["MiniMax-M2.7-2026-03-20", "MiniMax-M2.7", "MiniMax-M1.5-2026-03-20"]
+MINIMAX_MODEL_FALLBACK = ["MiniMax-M2.7", "MiniMax-M2.5", "MiniMax-M1.5"]
 
 
 MINIMAX_REDDIT_PROMPT = """You are a research assistant helping find Reddit discussions about: {topic}

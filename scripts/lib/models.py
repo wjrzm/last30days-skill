@@ -208,7 +208,7 @@ def select_minimax_model(
 
     # MiniMax-M2.7 is our default for structured extraction
     # It has strong reasoning and JSON extraction capabilities
-    candidates = ["MiniMax-M2.7-2026-03-20", "MiniMax-M2.7", "MiniMax-M1.5-2026-03-20"]
+    candidates = ["MiniMax-M2.7", "MiniMax-M2.5", "MiniMax-M1.5"]
 
     # Check cache first
     cached = cache.get_cached_model("minimax")
@@ -231,7 +231,7 @@ def select_minimax_model(
         pass
 
     # Fallback to default
-    default_model = "MiniMax-M2.7-2026-03-20"
+    default_model = "MiniMax-M2.7"
     cache.set_cached_model("minimax", default_model)
     return default_model
 

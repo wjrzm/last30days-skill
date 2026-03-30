@@ -233,7 +233,7 @@ def _search_reddit(
             reddit_items = minimax_reddit.search_reddit_with_fallback(
                 config["MINIMAX_API_KEY"],
                 config.get("MINIMAX_API_BASE", "https://api.minimax.chat/v1"),
-                selected_models.get("minimax", "MiniMax-M2.7-2026-03-20"),
+                selected_models.get("minimax", "MiniMax-M2.7"),
                 topic,
                 from_date,
                 to_date,
