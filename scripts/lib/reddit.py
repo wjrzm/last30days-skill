@@ -130,6 +130,36 @@ UTILITY_SUBS = frozenset({
 })
 
 
+def _topic_relevant_subreddits(topic: str) -> List[str]:
+    """Return hardcoded relevant subreddits when discovery finds nothing.
+
+    Used as fallback when global search returns 0 results, to avoid
+    discovering irrelevant subreddits from empty input.
+
+    Args:
+        topic: Search topic
+
+    Returns:
+        List of topic-relevant subreddit names
+    """
+    # Topic keywords → likely relevant subreddits
+    topic_subs: Dict[str, List[str]] = {
+        "home decor": ["interiordeco", "homedecor", "HomeDecorating", "InteriorDesign", "malelivingspace", "femalefashionadvice"],
+        "interior design": ["interiordeco", "InteriorDesign", "HomeDecorating", "homedecor", "DesignMyRoom"],
+        "canada": ["canadahousing", "PersonalFinanceCanada", "canadian", "AskACanadian"],
+        "usa": ["/AskReddit", "/AskReddit", "HomeImprovement", "furniture"],
+        "ai": ["artificial", "MachineLearning", "programming", "technology"],
+        "claude code": ["programming", "Developers", "ClaudeAI", "artificial"],
+        "default": ["interiordeco", "homedecor", "InteriorDesign", "HomeDecorating"],
+    }
+
+    topic_lower = topic.lower()
+    for key, subs in topic_subs.items():
+        if key in topic_lower:
+            return subs
+    return topic_subs["default"]
+
+
 def discover_subreddits(
     results: List[Dict[str, Any]],
     topic: str = "",
@@ -140,6 +170,9 @@ def discover_subreddits(
     Uses frequency + topic-word matching + utility-sub penalties + engagement
     bonus to find discussion subs rather than utility/meta subs.
 
+    When results is empty (global search failed), falls back to a
+    hardcoded topic-relevant subreddit list to avoid irrelevant discoveries.
+
     Args:
         results: List of post dicts from global search
         topic: Original search topic (for relevance matching)
@@ -148,6 +181,12 @@ def discover_subreddits(
     Returns:
         Top subreddit names sorted by weighted score
     """
+    # Fallback: no results from global search → use topic-relevant subs
+    if not results:
+        fallback_subs = _topic_relevant_subreddits(topic)
+        _log(f"No global search results — using fallback subreddits: {fallback_subs}")
+        return fallback_subs[:max_subs]
+
     core = _extract_core_subject(topic) if topic else ""
     core_words = set(core.lower().split()) if core else set()
 

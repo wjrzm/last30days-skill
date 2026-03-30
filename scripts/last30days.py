@@ -38,7 +38,7 @@ _child_pids: set = set()
 _child_pids_lock = threading.Lock()
 
 TIMEOUT_PROFILES = {
-    "quick":   {"global": 90,  "future": 30, "reddit_future": 60,  "youtube_future": 60,  "tiktok_future": 90,   "instagram_future": 90,   "hackernews_future": 30,  "bluesky_future": 30,  "truthsocial_future": 30,  "polymarket_future": 15,  "http": 15, "enrich_per": 8,  "enrich_total": 30, "enrich_max_items": 10},
+    "quick":   {"global": 150, "future": 30, "reddit_future": 60,  "youtube_future": 60,  "tiktok_future": 90,   "instagram_future": 90,   "hackernews_future": 30,  "bluesky_future": 30,  "truthsocial_future": 30,  "polymarket_future": 15,  "http": 15, "enrich_per": 8,  "enrich_total": 30, "enrich_max_items": 10},
     "default": {"global": 180, "future": 60, "reddit_future": 90,  "youtube_future": 90,  "tiktok_future": 120,  "instagram_future": 120,  "hackernews_future": 60,  "bluesky_future": 60,  "truthsocial_future": 60,  "polymarket_future": 30,  "http": 30, "enrich_per": 15, "enrich_total": 45, "enrich_max_items": 15},
     "deep":    {"global": 300, "future": 90, "reddit_future": 120, "youtube_future": 120, "tiktok_future": 150,  "instagram_future": 150,  "hackernews_future": 90,  "bluesky_future": 90,  "truthsocial_future": 90,  "polymarket_future": 45,  "http": 30, "enrich_per": 15, "enrich_total": 60, "enrich_max_items": 25},
 }
@@ -653,9 +653,23 @@ def _search_web(
     raw_results = []
 
     try:
+        # Append Pinterest for home decor / interior design / fashion topics (Exa indexes Pinterest well)
         if backend == "exa":
+            pinterest_topics = [
+                "home decor", "interior design", "interior decorating", "home design",
+                "room decor", "house decor", "home furnishing", "living room", "bedroom decor",
+                "kitchen decor", "bathroom decor", "outdoor decor", "garden design",
+                "fashion", "outfit", "clothing", "style", "accessories", "beauty",
+                "diy", "craft", "handmade", "art", "wall art", "paint",
+            ]
+            topic_lower = topic.lower()
+            if any(t in topic_lower for t in pinterest_topics):
+                search_topic = f"{topic} site:pinterest.com"
+            else:
+                search_topic = topic
+
             raw_results = exa_search.search_web(
-                topic, from_date, to_date, config["EXA_API_KEY"], depth=depth,
+                search_topic, from_date, to_date, config["EXA_API_KEY"], depth=depth,
             )
         elif backend == "parallel":
             raw_results = parallel_search.search_web(
@@ -1367,8 +1381,11 @@ def run_research(
         else:
             # Parallel enrichment with bounded concurrency and total timeout
             # Uses short HTTP timeout (10s) and 1 retry to fail fast on 429
+            # Circuit breaker: skip enrichment after 3 consecutive HTTP errors (treats 500s as service-down)
             completed_count = 0
             rate_limited = False
+            consecutive_errors = 0
+            circuit_broken = False
             with ThreadPoolExecutor(max_workers=5) as enrich_pool:
                 futures = {
                     enrich_pool.submit(reddit_enrich.enrich_reddit_item, item): i
@@ -1382,6 +1399,7 @@ def run_research(
                             progress.update_reddit_enrich(completed_count, len(items_to_enrich))
                         try:
                             reddit_items[idx] = future.result(timeout=timeouts["enrich_per"])
+                            consecutive_errors = 0  # Reset on success
                         except reddit_enrich.RedditRateLimitError:
                             rate_limited = True
                             if progress:
@@ -1391,8 +1409,21 @@ def run_research(
                             # Cancel remaining futures and bail
                             for f in futures:
                                 f.cancel()
+                            circuit_broken = True
                             break
                         except Exception as e:
+                            err_str = str(e)
+                            if "500" in err_str or "Internal Server Error" in err_str:
+                                consecutive_errors += 1
+                                if progress:
+                                    progress.show_error(
+                                        f"Reddit 500 error — {consecutive_errors}/3, skipping remaining enrichment"
+                                    )
+                                if consecutive_errors >= 3:
+                                    for f in futures:
+                                        f.cancel()
+                                    circuit_broken = True
+                                    break
                             if progress:
                                 progress.show_error(
                                     f"Enrich failed for {items_to_enrich[idx].get('url', 'unknown')}: {e}"
