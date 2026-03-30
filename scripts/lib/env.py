@@ -1,4 +1,5 @@
 """Environment and API key management for last30days skill."""
+from __future__ import annotations
 
 import base64
 import json
@@ -7,7 +8,7 @@ import os
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional, Dict, Any, List, Literal
+from typing import Optional, Dict, Any, List, Literal, Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -355,6 +356,8 @@ def get_config() -> Dict[str, Any]:
         ('GOOGLE_API_KEY', None),
         ('GEMINI_API_KEY', None),
         ('GOOGLE_GENAI_API_KEY', None),
+        ('MINIMAX_API_KEY', None),
+        ('MINIMAX_API_BASE', 'https://api.minimax.chat/v1'),
         ('OPENROUTER_API_KEY', None),
         ('PARALLEL_API_KEY', None),
         ('BRAVE_API_KEY', None),
@@ -365,6 +368,8 @@ def get_config() -> Dict[str, Any]:
         ('OPENAI_MODEL_PIN', None),
         ('XAI_MODEL_POLICY', 'latest'),
         ('XAI_MODEL_PIN', None),
+        ('MINIMAX_MODEL_POLICY', 'auto'),
+        ('MINIMAX_MODEL_PIN', None),
         ('SCRAPECREATORS_API_KEY', None),
         ('APIFY_API_TOKEN', None),
         ('AUTH_TOKEN', None),
@@ -420,22 +425,25 @@ def config_exists() -> bool:
 def is_reddit_available(config: Dict[str, Any]) -> bool:
     """Check if Reddit search is available.
 
-    Reddit can use either ScrapeCreators (preferred) or OpenAI.
+    Reddit can use ScrapeCreators (preferred), OpenAI, or MiniMax.
     """
     has_sc = bool(config.get('SCRAPECREATORS_API_KEY'))
     has_openai = bool(config.get('OPENAI_API_KEY')) and config.get('OPENAI_AUTH_STATUS') == AUTH_STATUS_OK
-    return has_sc or has_openai
+    has_minimax = bool(config.get('MINIMAX_API_KEY'))
+    return has_sc or has_openai or has_minimax
 
 
 def get_reddit_source(config: Dict[str, Any]) -> Optional[str]:
     """Determine which Reddit backend to use.
 
-    Priority: ScrapeCreators (cheaper, faster) > OpenAI (legacy)
+    Priority: ScrapeCreators (cheaper, faster) > MiniMax > OpenAI (legacy)
 
-    Returns: 'scrapecreators', 'openai', or None
+    Returns: 'scrapecreators', 'minimax', 'openai', or None
     """
     if config.get('SCRAPECREATORS_API_KEY'):
         return 'scrapecreators'
+    if config.get('MINIMAX_API_KEY'):
+        return 'minimax'
     if config.get('OPENAI_API_KEY') and config.get('OPENAI_AUTH_STATUS') == AUTH_STATUS_OK:
         return 'openai'
     return None

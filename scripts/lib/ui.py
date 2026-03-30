@@ -1,4 +1,5 @@
 """Terminal UI utilities for last30days skill."""
+from __future__ import annotations
 
 import sys
 import time

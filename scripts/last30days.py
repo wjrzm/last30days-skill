@@ -141,6 +141,7 @@ from lib import (
     dedupe,
     hackernews,
     xiaohongshu_api,
+    minimax_reddit,
     polymarket,
     entity_extract,
     env,
@@ -224,7 +225,32 @@ def _search_reddit(
             used_scrapecreators = False
             # Fall through to Tier 2 (public JSON)
 
-    # === Tier 2: Public Reddit JSON (free, always available) ===
+    # === Tier 2: MiniMax Chat Completions API (if key exists) ===
+    if not mock and config.get("MINIMAX_API_KEY"):
+        try:
+            sys.stderr.write("[Reddit] Using MiniMax Chat Completions API\n")
+            sys.stderr.flush()
+            reddit_items = minimax_reddit.search_reddit_with_fallback(
+                config["MINIMAX_API_KEY"],
+                config.get("MINIMAX_API_BASE", "https://api.minimax.chat/v1"),
+                selected_models.get("minimax", "MiniMax-M2.7-2026-03-20"),
+                topic,
+                from_date,
+                to_date,
+                depth=depth,
+            )
+            if reddit_items:
+                raw_response = {"source": "minimax", "items": reddit_items}
+                sys.stderr.write(f"[Reddit] MiniMax returned {len(reddit_items)} results\n")
+                sys.stderr.flush()
+                return reddit_items, raw_response, None, False
+            sys.stderr.write("[Reddit] MiniMax returned 0 results, trying public JSON\n")
+            sys.stderr.flush()
+        except Exception as e:
+            sys.stderr.write(f"[Reddit] MiniMax failed: {e}\n")
+            sys.stderr.flush()
+
+    # === Tier 3: Public Reddit JSON (free, always available) ===
     if not mock:
         try:
             sys.stderr.write("[Reddit] Trying public Reddit JSON\n")
@@ -237,15 +263,15 @@ def _search_reddit(
                 sys.stderr.write(f"[Reddit] Public JSON returned {len(reddit_items)} results\n")
                 sys.stderr.flush()
                 return reddit_items, raw_response, None, False
-            # Empty results — fall through to Tier 3
+            # Empty results — fall through to Tier 4
             sys.stderr.write("[Reddit] Public JSON returned 0 results, trying OpenAI\n")
             sys.stderr.flush()
         except Exception as e:
             sys.stderr.write(f"[Reddit] Public JSON failed: {e}\n")
             sys.stderr.flush()
-            # Fall through to Tier 3
+            # Fall through to Tier 4
 
-    # === Tier 3: OpenAI Responses API (legacy fallback) ===
+    # === Tier 4: OpenAI Responses API (legacy fallback) ===
     if not mock and config.get("OPENAI_API_KEY"):
         try:
             sys.stderr.write("[Reddit] Falling back to OpenAI Responses API\n")

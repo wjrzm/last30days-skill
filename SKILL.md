@@ -18,6 +18,8 @@ metadata:
       optionalEnv:
         - OPENAI_API_KEY
         - XAI_API_KEY
+        - MINIMAX_API_KEY
+        - MINIMAX_API_BASE
         - OPENROUTER_API_KEY
         - PARALLEL_API_KEY
         - BRAVE_API_KEY

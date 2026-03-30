@@ -181,17 +181,72 @@ def select_xai_model(
     return XAI_ALIASES["latest"]
 
 
+def select_minimax_model(
+    api_key: str,
+    base_url: str = "https://api.minimax.chat/v1",
+    policy: str = "auto",
+    pin: Optional[str] = None,
+) -> str:
+    """Select the best MiniMax model for structured extraction tasks.
+
+    MiniMax uses OpenAI-compatible Chat Completions API. We use the
+    MiniMax-M2.7 model by default for its strong reasoning and extraction
+    capabilities. The API is OpenAI-compatible so we can use a simple
+    fallback chain without hitting a models endpoint.
+
+    Args:
+        api_key: MiniMax API key
+        base_url: MiniMax API base URL
+        policy: 'auto' or 'pinned'
+        pin: Model to use if policy is 'pinned'
+
+    Returns:
+        Selected model ID
+    """
+    if policy == "pinned" and pin:
+        return pin
+
+    # MiniMax-M2.7 is our default for structured extraction
+    # It has strong reasoning and JSON extraction capabilities
+    candidates = ["MiniMax-M2.7-2026-03-20", "MiniMax-M2.7", "MiniMax-M1.5-2026-03-20"]
+
+    # Check cache first
+    cached = cache.get_cached_model("minimax")
+    if cached:
+        return cached
+
+    # Try the models list endpoint (OpenAI-compatible)
+    models_url = f"{base_url.rstrip('/')}/models"
+    try:
+        headers = {"Authorization": f"Bearer {api_key}"}
+        response = http.get(models_url, headers=headers)
+        available = [m.get("id", "") for m in response.get("data", [])]
+        # Find best match from our candidates
+        for candidate in candidates:
+            for model_id in available:
+                if candidate.lower() in model_id.lower():
+                    cache.set_cached_model("minimax", model_id)
+                    return model_id
+    except http.HTTPError:
+        pass
+
+    # Fallback to default
+    default_model = "MiniMax-M2.7-2026-03-20"
+    cache.set_cached_model("minimax", default_model)
+    return default_model
+
+
 def get_models(
     config: Dict,
     mock_openai_models: Optional[List[Dict]] = None,
     mock_xai_models: Optional[List[Dict]] = None,
 ) -> Dict[str, Optional[str]]:
-    """Get selected models for both providers.
+    """Get selected models for all configured providers.
 
     Returns:
-        Dict with 'openai' and 'xai' keys
+        Dict with 'openai', 'xai', and 'minimax' keys
     """
-    result = {"openai": None, "xai": None}
+    result = {"openai": None, "xai": None, "minimax": None}
 
     if config.get("OPENAI_API_KEY"):
         if config.get("OPENAI_AUTH_SOURCE") == env.AUTH_SOURCE_CODEX:
@@ -216,6 +271,14 @@ def get_models(
             config.get("XAI_MODEL_POLICY", "latest"),
             config.get("XAI_MODEL_PIN"),
             mock_xai_models,
+        )
+
+    if config.get("MINIMAX_API_KEY"):
+        result["minimax"] = select_minimax_model(
+            config["MINIMAX_API_KEY"],
+            config.get("MINIMAX_API_BASE", "https://api.minimax.chat/v1"),
+            config.get("MINIMAX_MODEL_POLICY", "auto"),
+            config.get("MINIMAX_MODEL_PIN"),
         )
 
     return result
